@@ -1,0 +1,393 @@
+
+
+
+### 1. Thêm event
+POST http://localhost:8080/api/events
+Content-Type: application/json
+{
+  "title": "asdfas",
+  "maxPlayers": 5,
+  "startTime": "2026-06-13T10:55",
+  "endTime": "2026-06-13T10:55",
+  "locationLat": 35.6895,
+  "locationLng": 139.6917
+}
+
+
+# 35.52887355069095, 139.70609582201598
+
+# INSERT INTO public.events
+# (id, club_id, title_translations, start_time, end_time, max_players, status, created_at, venue_id, content_translations, notes_translations, title, 
+# location_lat, location_lng, host_id)
+# VALUES(nextval('events_id_seq'::regclass), 0, '', '', '', 0, 'open'::character varying, CURRENT_TIMESTAMP, 0, '', '', '', 0, 0, 0);
+
+
+## # BADMINTON PLATFORM API TEST
+GET http://localhost:8080/auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzIiwiZW1haWwiOiJwaGFtaG9hbmdwaHVAZ21haWwuY29tIiwiaWF0IjoxNzgxMTM2Nzg0LCJleHAiOjE3ODEyMjMxODR9.k8QZthfxL2qNn_dm9bXFLLNXM2rTRLMXJCuHAcbNB74
+
+
+## 1. TEST API get latest events (dùng cho trang chủ)
+GET http://localhost:8080/api/events/latest
+
+### 1. Thêm câu lạc bộ 1
+GET http://localhost:8080/api/clubs
+Content-Type: application/json
+
+{
+  "nameTranslations": {
+    "en": "Badminton Club A",
+    "vi": "Câu lạc bộ Cầu lông A",
+    "ja": "バドミントンクラブA"
+  }
+}
+
+### 1. Tạo User (Owner hoặc Người tham gia)
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "email": "player4@example.com",
+  "fullName": "Nguyen Van B",
+  "localeCode": "vi"
+}
+
+### 2. Tạo Môn thể thao
+POST http://localhost:8080/api/sports
+Content-Type: application/json
+
+{
+  "code": "BADMINTON",
+  "nameTranslations": { "en": "Badminton", "vi": "Cầu lông" }
+}
+
+### 3. Tạo Địa điểm (Venue) - PHẢI CÓ TRƯỚC EVENT
+POST http://localhost:8080/api/venues
+Content-Type: application/json
+
+{
+  "name": "Sân Cầu Lông ABC",
+  "address": "123 Đường Láng, Hà Nội",
+  "lat": 21.0123,
+  "lng": 105.8123
+}
+
+### 4. Tạo Câu lạc bộ
+POST http://localhost:8080/api/clubs
+Content-Type: application/json
+
+{
+  "sportId": 1,
+  "ownerId": 1,
+  "nameTranslations": { "en": "Badminton Club A" }
+}
+
+### 5. Tạo Sự kiện (Event)
+POST http://localhost:8080/api/events
+Content-Type: application/json
+
+{
+  "clubId": 1,
+  "venueId": 1,
+  "titleTranslations": { "en": "Saturday Match" },
+  "startTime": "2026-06-13T09:00:00Z",
+  "endTime": "2026-06-13T11:00:00Z",
+  "maxPlayers": 12,
+  "status": "OPEN"
+}
+
+### 6. Tạo Người tham gia (Event Participant)
+POST http://localhost:8080/api/event_participants
+Content-Type: application/json
+
+{
+  "eventId": 1,
+  "userId": 1,
+  "status": "REGISTERED"
+}
+
+################################################################################
+# BASE
+################################################################################
+
+@baseUrl = http://localhost:8080/api
+
+
+################################################################################
+# 1) USERS
+################################################################################
+
+### 1.1 Thêm User 1 (Host/Owner)
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "email": "admin@badminton.com",
+  "fullName": "Nguyen Van A",
+  "localeCode": "vi"
+}
+
+### 1.2 Thêm User 2
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "email": "host2@badminton.com",
+  "fullName": "Tran Thi B",
+  "localeCode": "en"
+}
+
+### 1.3 Thêm User 3
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "email": "player1@badminton.com",
+  "fullName": "Le Van C",
+  "localeCode": "ja"
+}
+
+### 1.4 Lấy danh sách Users
+GET {{baseUrl}}/users
+
+
+
+################################################################################
+# 2) SPORTS
+################################################################################
+
+### 2.1 Thêm Sport: BADMINTON
+POST {{baseUrl}}/sports
+Content-Type: application/json
+
+{
+  "code": "BADMINTON",
+  "nameTranslations": {
+    "en": "Badminton",
+    "vi": "Cầu lông",
+    "ja": "バドミントン"
+  }
+}
+
+### 2.2 Thêm Sport: FOOTBALL
+POST {{baseUrl}}/sports
+Content-Type: application/json
+
+{
+  "code": "FOOTBALL",
+  "nameTranslations": {
+    "en": "Football",
+    "vi": "Bóng đá",
+    "ja": "サッカー"
+  }
+}
+
+### 2.3 Lấy danh sách Sports
+GET {{baseUrl}}/sports
+
+
+
+################################################################################
+# 3) VENUES
+################################################################################
+# venues.sportIds trong ERD là sport_ids (mảng). Dưới đây dùng "sportIds" camelCase.
+# Nếu API của bạn đang dùng "sport_ids" hoặc "sportIds", bạn sửa lại cho khớp DTO.
+
+### 3.1 Thêm Venue 1 (badminton)
+POST {{baseUrl}}/venues
+Content-Type: application/json
+
+{
+  "name": "Phu Nhuan Badminton Hall",
+  "address": "45 Phan Dang Luu, Phu Nhuan, HCMC",
+  "mapUrl": "https://maps.google.com/?q=10.7990,106.6780",
+  "lat": 10.7990,
+  "lng": 106.6780,
+  "sportIds": [1]
+}
+
+### 3.2 Thêm Venue 2 (badminton + football)
+POST {{baseUrl}}/venues
+Content-Type: application/json
+
+{
+  "name": "ABC Sports Center",
+  "address": "123 Nguyen Van Linh, Quan 7, HCMC",
+  "mapUrl": "https://maps.google.com/?q=10.7290,106.7210",
+  "lat": 10.7290,
+  "lng": 106.7210,
+  "sportIds": [1, 2]
+}
+
+### 3.3 Lấy danh sách Venues
+GET {{baseUrl}}/venues
+
+
+
+################################################################################
+# 4) CLUBS
+################################################################################
+# clubs.sportId -> sports.id
+# clubs.ownerId -> users.id
+
+### 4.1 Thêm Club 1 (Owner = user 1, Sport = badminton id 1)
+POST {{baseUrl}}/clubs
+Content-Type: application/json
+
+{
+  "sportId": 1,
+  "ownerId": 1,
+  "nameTranslations": {
+    "en": "Badminton Club A",
+    "vi": "Câu lạc bộ Cầu lông A",
+    "ja": "バドミントンクラブA"
+  },
+  "descriptionTranslations": {
+    "en": "Friendly club for all levels",
+    "vi": "CLB thân thiện cho mọi trình độ",
+    "ja": "全レベル向けのフレンドリーなクラブ"
+  }
+}
+
+### 4.2 Thêm Club 2 (Owner = user 2, Sport = badminton id 1)
+POST {{baseUrl}}/clubs
+Content-Type: application/json
+
+{
+  "sportId": 1,
+  "ownerId": 2,
+  "nameTranslations": {
+    "en": "Tokyo Smashers",
+    "vi": "Câu lạc bộ Smashers Tokyo",
+    "ja": "東京スマッシャーズ"
+  },
+  "descriptionTranslations": {
+    "en": "Competitive doubles rotation",
+    "vi": "Đánh đôi luân phiên thiên về competitive",
+    "ja": "競技志向のダブルスローテーション"
+  }
+}
+
+### 4.3 Lấy danh sách Clubs
+GET {{baseUrl}}/clubs
+
+
+
+################################################################################
+# 5) EVENTS
+################################################################################
+# events.clubId  -> clubs.id
+# events.venueId -> venues.id
+# status: ví dụ OPEN/CLOSED/CANCELLED (tuỳ enum của bạn)
+
+### 5.1 Thêm Event 1 (Club 1 tại Venue 1)
+POST {{baseUrl}}/events
+Content-Type: application/json
+
+{
+  "clubId": 1,
+  "venueId": 1,
+  "titleTranslations": {
+    "en": "Saturday Match",
+    "vi": "Trận đấu thứ 7",
+    "ja": "土曜日の試合"
+  },
+  "contentTranslations": {
+    "en": "Doubles rotation, bring indoor shoes.",
+    "vi": "Đánh đôi luân phiên, mang giày trong nhà.",
+    "ja": "ダブルスのローテーション。室内シューズを持参してください。"
+  },
+  "notesTranslations": {
+    "en": "Arrive 10 minutes early.",
+    "vi": "Đến sớm 10 phút.",
+    "ja": "10分早めに来てください。"
+  },
+  "startTime": "2026-06-13T09:00:00Z",
+  "endTime": "2026-06-13T11:00:00Z",
+  "maxPlayers": 12,
+  "status": "OPEN"
+}
+
+### 5.2 Thêm Event 2 (Club 2 tại Venue 2)
+POST {{baseUrl}}/events
+Content-Type: application/json
+
+{
+  "clubId": 2,
+  "venueId": 2,
+  "titleTranslations": {
+    "en": "Weeknight Smash",
+    "vi": "Giao lưu buổi tối",
+    "ja": "平日夜の練習"
+  },
+  "contentTranslations": {
+    "en": "Intermediate+ players. Rotation every 15 minutes.",
+    "vi": "Trình độ trung bình+; đổi vòng mỗi 15 phút.",
+    "ja": "中級以上。15分ごとにローテーションします。"
+  },
+  "notesTranslations": {
+    "en": "Bring your own shuttlecocks if possible.",
+    "vi": "Nếu có thể hãy mang cầu.",
+    "ja": "可能であればシャトルを持参してください。"
+  },
+  "startTime": "2026-06-16T19:00:00Z",
+  "endTime": "2026-06-16T21:00:00Z",
+  "maxPlayers": 16,
+  "status": "OPEN"
+}
+
+### 5.3 Lấy danh sách Events
+GET {{baseUrl}}/events
+
+
+
+################################################################################
+# 6) EVENT PARTICIPANTS
+################################################################################
+# event_participants.eventId -> events.id
+# event_participants.userId  -> users.id
+# status: ví dụ GOING/CANCELLED/WAITING (tuỳ enum của bạn)
+
+### 6.1 User 1 tham gia Event 1
+POST {{baseUrl}}/event-participants
+Content-Type: application/json
+
+{
+  "eventId": 1,
+  "userId": 1,
+  "status": "GOING"
+}
+
+### 6.2 User 2 tham gia Event 1
+POST {{baseUrl}}/event-participants
+Content-Type: application/json
+
+{
+  "eventId": 1,
+  "userId": 2,
+  "status": "GOING"
+}
+
+### 6.3 User 3 tham gia Event 1
+POST {{baseUrl}}/event-participants
+Content-Type: application/json
+
+{
+  "eventId": 1,
+  "userId": 3,
+  "status": "GOING"
+}
+
+### 6.4 User 3 đăng ký Event 2 (WAITING/PENDING tuỳ hệ thống)
+POST {{baseUrl}}/event-participants
+Content-Type: application/json
+
+{
+  "eventId": 2,
+  "userId": 3,
+  "status": "WAITING"
+}
+
+### 6.5 Lấy danh sách participants (nếu API có)
+# Nếu endpoint của bạn là /events/{id}/participants thì bạn sửa lại.
+GET {{baseUrl}}/event-participants
