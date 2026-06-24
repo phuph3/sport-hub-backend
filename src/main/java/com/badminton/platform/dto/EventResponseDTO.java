@@ -1,6 +1,7 @@
 package com.badminton.platform.dto;
 
 import com.badminton.platform.entity.EventStatus;
+import com.badminton.platform.entity.Sport;
 
 import lombok.Data;
 
@@ -31,6 +32,7 @@ public class EventResponseDTO {
     private String cityCode;
 
     private Long sportId;
+    private Sport sport;
 
     private String levelFrom;
     private String levelTo;
@@ -49,6 +51,14 @@ public class EventResponseDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Sport getSport() {
+        return sport;
+    }
+
+    public void setSport(Sport sport) {
+        this.sport = sport;
     }
 
 }

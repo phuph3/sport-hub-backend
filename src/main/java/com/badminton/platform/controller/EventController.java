@@ -274,7 +274,7 @@ public class EventController {
 
             // Thiết lập Headers quan trọng
             HttpHeaders headers = new HttpHeaders();
-            
+
             headers.set("User-Agent", "MyGeocodingApp/1.0 (contact@goshub.jp)");
             headers.set("Accept", "application/json");
 
@@ -672,10 +672,14 @@ public class EventController {
                 .map(EventParticipant::getEventId)
                 .toList();
 
-        List<Event> joinedEvents = eventRepository.findAllById(joinedEventIds);
+        // List<Event> joinedEvents = eventRepository.findAllById(joinedEventIds);
+
+        List<Event> joinedEvents = eventRepository.findAllWithSportByIdIn(joinedEventIds);
 
         // events bạn host
-        List<Event> hostedEvents = eventRepository.findByHostId(userId);
+        // List<Event> hostedEvents = eventRepository.findByHostId(userId);
+
+        List<Event> hostedEvents = eventRepository.findByHostIdWithSport(userId);
 
         // merge + tránh duplicate
         Map<Long, Event> map = new HashMap<>();
@@ -716,6 +720,7 @@ public class EventController {
             dto.setCityCode(e.getCityCode());
 
             dto.setSportId(e.getSport().getId());
+            dto.setSport(e.getSport());
 
             dto.setLevelFrom(e.getLevelFrom());
             dto.setLevelTo(e.getLevelTo());

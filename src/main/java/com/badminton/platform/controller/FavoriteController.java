@@ -51,7 +51,8 @@ public class FavoriteController {
                 .map(FavoriteEvent::getEventId)
                 .collect(Collectors.toList());
 
-        List<Event> events = eventRepository.findAllById(ids);
+        // List<Event> events = eventRepository.findAllById(ids);
+        List<Event> events = eventRepository.findAllWithSportByIdIn(ids);
 
         for (Event e : events) {
             long count = eventParticipantRepository.countByEventIdAndStatus(
@@ -82,6 +83,7 @@ public class FavoriteController {
                     dto.setCityCode(e.getCityCode());
 
                     dto.setSportId(e.getSport().getId());
+                    dto.setSport(e.getSport());
 
                     dto.setLevelFrom(e.getLevelFrom());
                     dto.setLevelTo(e.getLevelTo());
