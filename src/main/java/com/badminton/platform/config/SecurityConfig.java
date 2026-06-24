@@ -15,17 +15,27 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    //  FINAL CONFIG (CLEAN)
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> {
-                }) 
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().permitAll());
+            // ❌ disable csrf cho API
+            .csrf(csrf -> csrf.disable())
+
+            // ❌ KHÔNG cần cors() nữa (đã xử lý bằng GlobalCorsFilter)
+            // .cors(cors -> {}) ❌ REMOVE nếu có
+
+            .authorizeHttpRequests(auth -> auth
+                //  cho phép login Google
+                .requestMatchers("/api/auth/**").permitAll()
+
+                //  cho phép OPTIONS (preflight) — cực kỳ quan trọng
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+
+                //  tạm mở hết (sau này tighten lại)
+                .anyRequest().permitAll()
+            );
 
         return http.build();
     }
-
 }
