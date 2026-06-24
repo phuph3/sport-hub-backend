@@ -267,35 +267,29 @@ public class EventController {
     @GetMapping("/geocode")
     public Object geocode(@RequestParam String q) {
         try {
+            // Encode URL cẩn thận
+            String encodedQuery = URLEncoder.encode(q, StandardCharsets.UTF_8);
+            String url = "https://nominatim.openstreetmap.org/search?q=" + encodedQuery
+                    + "&format=json&accept-language=ja&limit=5";
 
-            // thêm context Japan
-            String query = q + " Japan";
-
-            String url = "https://nominatim.openstreetmap.org/search?q="
-                    + URLEncoder.encode(query, StandardCharsets.UTF_8)
-                    + "&format=json"
-                    + "&accept-language=ja"
-                    + "&limit=1";
-
-            System.out.println("👉 GEOCODE query url= " + url);
-
+            // Thiết lập Headers quan trọng
             HttpHeaders headers = new HttpHeaders();
-            headers.set("User-Agent", "SportHub/1.0");
+            
+            headers.set("User-Agent", "MyGeocodingApp/1.0 (contact@goshub.jp)");
+            headers.set("Accept", "application/json");
 
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            Object result = restTemplate
-                    .exchange(url, HttpMethod.GET, entity, Object.class)
-                    .getBody();
+            // Sử dụng RestTemplate để gọi
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
-            System.out.println("👉 GEOCODE query = " + query);
-            System.out.println("👉 RESULT = " + result);
-
-            return result;
+            System.out.println("👉 API Response: " + response.getBody());
+            return response.getBody();
 
         } catch (Exception e) {
             e.printStackTrace();
-            return List.of();
+            return "Error: " + e.getMessage();
         }
     }
 
