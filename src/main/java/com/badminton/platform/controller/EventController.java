@@ -268,14 +268,15 @@ public class EventController {
     public Object geocode(@RequestParam String q) {
         try {
 
-            //  thêm context Japan
+            // thêm context Japan
             String query = q + " Japan";
 
             String url = "https://nominatim.openstreetmap.org/search?q="
-                    + URLEncoder.encode(query, StandardCharsets.UTF_8)
+                    + URLEncoder.encode(q, StandardCharsets.UTF_8)
                     + "&format=json"
-                    + "&countrycodes=jp" //  chỉ search Nhật
-                    + "&limit=1"; //  lấy 1 kết quả
+                    + "&accept-language=ja"
+                    + "&countrycodes=jp"
+                    + "&limit=1";
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "SportHub/1.0");
