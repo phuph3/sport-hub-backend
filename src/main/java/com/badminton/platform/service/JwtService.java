@@ -23,7 +23,7 @@ public class JwtService {
                 .setSubject(userId.toString())
                 // .claim("email", email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 1 ngày
+                .setExpiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 90)) // 90 ngày (3 tháng)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
