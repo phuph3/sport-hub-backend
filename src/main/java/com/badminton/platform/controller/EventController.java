@@ -4,6 +4,7 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.net.HttpURLConnection;
 import com.badminton.platform.entity.Location;
 import com.badminton.platform.config.EventWebSocketHandler;
@@ -19,6 +20,7 @@ import com.badminton.platform.dto.EventResponseDTO;
 import com.badminton.platform.repository.LocationRepository;
 import com.badminton.platform.repository.EventParticipantRepository;
 import com.badminton.platform.service.NotificationService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.badminton.platform.service.EventParticipantService;
 import com.badminton.platform.repository.UserRepository;
 import com.badminton.platform.entity.User;
@@ -27,7 +29,9 @@ import com.badminton.platform.entity.User;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
@@ -42,7 +46,15 @@ import com.badminton.platform.entity.Notification;
 import com.badminton.platform.repository.NotificationRepository;
 
 import java.util.Map;
-//import java.util.HashMap;
+
+import java.net.URLEncoder;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.web.client.RestTemplate;
+// Đảm bảo bạn cũng có các import cũ
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/events")
@@ -79,6 +91,11 @@ public class EventController {
 
     @Autowired
     private EventParticipantService eventParticipantService;
+
+    //@Autowired
+    //private RestTemplate restTemplate;
+
+    private final RestTemplate restTemplate;
 
     // @GetMapping
     // public List<Event> getAllEvents() {
@@ -239,6 +256,28 @@ public class EventController {
         } catch (Exception e) {
             e.printStackTrace();
             return url;
+        }
+    }
+
+    // Spring sẽ tự động "bơm" cái Bean RestTemplate vào đây
+    public EventController(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    @GetMapping("/geocode")
+    public Object geocode(@RequestParam String q) {
+        try {
+            String url = "https://nominatim.openstreetmap.org/search?q="
+                    + URLEncoder.encode(q, StandardCharsets.UTF_8) + "&format=json";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "SportHub/1.0");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            return restTemplate.exchange(url, HttpMethod.GET, entity, Object.class).getBody();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of();
         }
     }
 
