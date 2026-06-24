@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import com.badminton.platform.entity.User;
 import com.badminton.platform.repository.UserFollowRepository;
 import com.badminton.platform.repository.UserRepository;
+import com.badminton.platform.dto.ChangePasswordRequest;
 
 import java.util.Map;
 import java.util.Collections;
@@ -57,7 +58,8 @@ public class AuthController {
             GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
                     new com.google.api.client.http.javanet.NetHttpTransport(),
                     GsonFactory.getDefaultInstance())
-                    .setAudience(Collections.singletonList("248980513097-e1btvc6qb7dj7e9j0go4bn8eilr2rp5v.apps.googleusercontent.com"))
+                    .setAudience(Collections
+                            .singletonList("248980513097-e1btvc6qb7dj7e9j0go4bn8eilr2rp5v.apps.googleusercontent.com"))
                     .build();
 
             GoogleIdToken idToken = verifier.verify(token);
@@ -71,7 +73,7 @@ public class AuthController {
             String email = payload.getEmail();
             String name = (String) payload.get("name");
 
-            //  tìm user theo email
+            // tìm user theo email
             User user = userRepository.findByEmail(email)
                     .orElseGet(() -> {
                         User newUser = new User();
@@ -80,7 +82,7 @@ public class AuthController {
                         return userRepository.save(newUser);
                     });
 
-            //  tạo JWT
+            // tạo JWT
             String jwt = jwtService.generateToken(user.getId());
 
             return ResponseEntity.ok(new AuthResponse(jwt, user));
@@ -136,5 +138,19 @@ public class AuthController {
     @PostMapping("/register")
     public AuthResponse register(@RequestBody RegisterRequest req) {
         return authService.register(req);
+    }
+
+    @PutMapping("/change-password")
+    public ResponseEntity<?> changePassword(
+            @RequestBody ChangePasswordRequest req,
+            @RequestHeader("Authorization") String authHeader) {
+        Long userId = jwtService.getUserIdFromHeader(authHeader);
+
+        authService.changePassword(
+                userId,
+                req.getOldPassword(),
+                req.getNewPassword());
+
+        return ResponseEntity.ok().build();
     }
 }

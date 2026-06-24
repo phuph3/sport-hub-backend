@@ -51,7 +51,7 @@ public class AuthService {
 
         // 1. check email tồn tại
         if (userRepository.findByEmail(req.getEmail()).isPresent()) {
-            throw new EmailExistsException(); 
+            throw new EmailExistsException();
         }
 
         // 2. tạo user
@@ -70,6 +70,26 @@ public class AuthService {
         // 4. trả về user + token
         return new AuthResponse(token, user);
 
+    }
+
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
+
+        // check password cũ
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new RuntimeException("INVALID_OLD_PASSWORD");
+        }
+
+        // validate password mới
+        if (newPassword.length() < 6) {
+            throw new RuntimeException("PASSWORD_TOO_SHORT");
+        }
+
+        // update
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
     }
 
 }
