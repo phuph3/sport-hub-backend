@@ -92,8 +92,8 @@ public class EventController {
     @Autowired
     private EventParticipantService eventParticipantService;
 
-    //@Autowired
-    //private RestTemplate restTemplate;
+    // @Autowired
+    // private RestTemplate restTemplate;
 
     private final RestTemplate restTemplate;
 
@@ -267,14 +267,30 @@ public class EventController {
     @GetMapping("/geocode")
     public Object geocode(@RequestParam String q) {
         try {
+
+            //  thêm context Japan
+            String query = q + " Japan";
+
             String url = "https://nominatim.openstreetmap.org/search?q="
-                    + URLEncoder.encode(q, StandardCharsets.UTF_8) + "&format=json";
+                    + URLEncoder.encode(query, StandardCharsets.UTF_8)
+                    + "&format=json"
+                    + "&countrycodes=jp" //  chỉ search Nhật
+                    + "&limit=1"; //  lấy 1 kết quả
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "SportHub/1.0");
+
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            return restTemplate.exchange(url, HttpMethod.GET, entity, Object.class).getBody();
+            Object result = restTemplate
+                    .exchange(url, HttpMethod.GET, entity, Object.class)
+                    .getBody();
+
+            System.out.println("👉 GEOCODE query = " + query);
+            System.out.println("👉 RESULT = " + result);
+
+            return result;
+
         } catch (Exception e) {
             e.printStackTrace();
             return List.of();
