@@ -272,11 +272,12 @@ public class EventController {
             String query = q + " Japan";
 
             String url = "https://nominatim.openstreetmap.org/search?q="
-                    + URLEncoder.encode(q, StandardCharsets.UTF_8)
+                    + URLEncoder.encode(query, StandardCharsets.UTF_8)
                     + "&format=json"
                     + "&accept-language=ja"
-                    + "&countrycodes=jp"
                     + "&limit=1";
+
+            System.out.println("👉 GEOCODE query url= " + url);
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "SportHub/1.0");
