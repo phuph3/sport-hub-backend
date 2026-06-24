@@ -9,6 +9,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import jakarta.servlet.Filter;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE) //  CHẠY TRƯỚC JwtFilter
@@ -17,6 +18,8 @@ public class GlobalCorsFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
+
+                System.out.println("✅ GlobalCorsFilter HIT");
 
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse res = (HttpServletResponse) response;
