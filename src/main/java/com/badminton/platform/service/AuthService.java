@@ -10,6 +10,7 @@ import com.badminton.platform.dto.RegisterRequest;
 import com.badminton.platform.dto.AuthResponse;
 import java.time.LocalDateTime;
 import com.badminton.platform.dto.LoginRequest;
+import com.badminton.platform.exception.EmailExistsException;
 
 @Service
 public class AuthService {
@@ -28,7 +29,6 @@ public class AuthService {
         // 1. tìm user theo email
         User user = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
-                
 
         // 2. check account type (tránh Google login bằng mật khẩu)
         if (!"LOCAL".equals(user.getProvider())) {
@@ -51,7 +51,7 @@ public class AuthService {
 
         // 1. check email tồn tại
         if (userRepository.findByEmail(req.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already exists");
+            throw new EmailExistsException(); 
         }
 
         // 2. tạo user
