@@ -213,30 +213,79 @@ public class EventController {
     // throw e;
     // }
     // }
+    private String resolveRedirect(String url) {
+        try {
+            URL currentUrl = new URL(url);
+
+            for (int i = 0; i < 5; i++) {
+                HttpURLConnection conn = (HttpURLConnection) currentUrl.openConnection();
+
+                conn.setInstanceFollowRedirects(false);
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                conn.connect();
+
+                String redirect = conn.getHeaderField("Location");
+
+                if (redirect == null) {
+                    break;
+                }
+
+                System.out.println("➡️ Redirect to: " + redirect);
+                currentUrl = new URL(redirect);
+            }
+
+            return currentUrl.toString();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return url;
+        }
+    }
 
     @GetMapping("/extract-latlng")
     public Map<String, Double> extractLatLng(@RequestParam String url) {
         try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-            conn.setInstanceFollowRedirects(false);
+            String finalUrl = resolveRedirect(url);
 
-            String redirect = conn.getHeaderField("Location");
+            System.out.println("✅ Final URL: " + finalUrl);
 
-            if (redirect != null) {
-                Pattern pattern = Pattern.compile("@(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
-                Matcher matcher = pattern.matcher(redirect);
+            // =========================
+            // 1. CASE: @lat,lng
+            // =========================
+            Pattern pattern1 = Pattern.compile("@(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
+            Matcher matcher1 = pattern1.matcher(finalUrl);
 
-                if (matcher.find()) {
-                    double lat = Double.parseDouble(matcher.group(1));
-                    double lng = Double.parseDouble(matcher.group(2));
-
-                    Map<String, Double> result = new HashMap<>();
-                    result.put("lat", lat);
-                    result.put("lng", lng);
-                    return result;
-                }
+            if (matcher1.find()) {
+                return Map.of(
+                        "lat", Double.parseDouble(matcher1.group(1)),
+                        "lng", Double.parseDouble(matcher1.group(2)));
             }
 
+            // =========================
+            // 2. CASE: q=lat,lng
+            // =========================
+            Pattern pattern2 = Pattern.compile("[?&]q=(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
+            Matcher matcher2 = pattern2.matcher(finalUrl);
+
+            if (matcher2.find()) {
+                return Map.of(
+                        "lat", Double.parseDouble(matcher2.group(1)),
+                        "lng", Double.parseDouble(matcher2.group(2)));
+            }
+
+            // =========================
+            // 3. CASE: search fallback
+            // =========================
+            Pattern pattern3 = Pattern.compile("!3d(-?\\d+\\.\\d+)!4d(-?\\d+\\.\\d+)");
+            Matcher matcher3 = pattern3.matcher(finalUrl);
+
+            if (matcher3.find()) {
+                return Map.of(
+                        "lat", Double.parseDouble(matcher3.group(1)),
+                        "lng", Double.parseDouble(matcher3.group(2)));
+            }
+
+            System.out.println("❌ Cannot extract lat/lng");
             return Map.of();
 
         } catch (Exception e) {
