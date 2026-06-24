@@ -15,16 +15,17 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    //  QUAN TRỌNG NHẤT
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) //  disable CSRF cho test API
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll() //  cho phép auth APIs
-                .anyRequest().permitAll() //  tạm thời cho hết
-            );
+                .cors(cors -> {
+                }) 
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .anyRequest().permitAll());
 
         return http.build();
     }
+
 }
