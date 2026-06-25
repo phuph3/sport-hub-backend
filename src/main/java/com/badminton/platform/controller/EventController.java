@@ -33,6 +33,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -91,6 +92,9 @@ public class EventController {
 
     @Autowired
     private EventParticipantService eventParticipantService;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     // @Autowired
     // private RestTemplate restTemplate;
@@ -551,20 +555,25 @@ public class EventController {
         // notificationRepo.save(n);
 
         // 5. notify host (websocket)
+        // websocket payload
+        long newCount = participantRepo.countByEventIdAndStatus(id, "JOINED");
         Map<String, Object> msg = new HashMap<>();
         msg.put("type", "JOIN");
         msg.put("eventId", id);
         msg.put("userId", userId);
         msg.put("status", status);
+        msg.put("currentPlayers", newCount);
+        msg.put("maxPlayers", event.getMaxPlayers());
 
-        EventWebSocketHandler.broadcast(msg);
+        // EventWebSocketHandler.broadcast(msg);
+        messagingTemplate.convertAndSend("/topic/events", msg);
 
         // 6. response chuẩn
         return Map.of(
                 "status", status, // JOINED | WAITING
                 "eventId", id,
                 "userId", userId,
-                "currentPlayers", joinedCount + (status.equals("JOINED") ? 1 : 0),
+                "currentPlayers", newCount,
                 "maxPlayers", event.getMaxPlayers(),
                 "message",
                 status.equals("JOINED")
