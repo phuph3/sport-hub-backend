@@ -430,48 +430,46 @@ public class EventController {
             return "unauthorized";
         }
 
-        // tìm user trong event
         EventParticipant ep = participantRepo.findByEventIdAndUserId(id, userId);
 
         if (ep == null) {
             return "not_found";
         }
 
-        // xoá user khỏi event
+        // 1. delete
         participantRepo.delete(ep);
 
-        // 5. notify host (notification)
-        // User user = userRepo.findById(userId).orElse(null);
-        // String name = user != null && user.getNickname() != null
-        // ? user.getNickname()
-        // : "User";
-
-        // Notification n = new Notification();
-        // n.setUserId(event.getHostId());
-        // n.setActorId(userId);
-        // n.setEventId(id);
-        // n.setType("JOIN");
-        // n.setMessage(buildMessage("JOIN", userId, userName));
-        // notificationRepo.save(n);
-
-        // promote logic...
-        Map<String, Object> msg = new HashMap<>();
-        msg.put("type", "LEAVE");
-        msg.put("eventId", id);
-        msg.put("userId", userId);
-
-        EventWebSocketHandler.broadcast(msg);
-        System.out.println("Broadcast LEAVE : " + msg);
-
-        // LẤY WAITING LIST (theo thứ tự)
+        // 2. promote waiting
         List<EventParticipant> waitingList = participantRepo.findByEventIdAndStatusOrderByCreatedAtAsc(id, "WAITING");
 
-        // promote người đầu tiên
+        Long promotedUserId = null;
+
         if (!waitingList.isEmpty()) {
             EventParticipant next = waitingList.get(0);
             next.setStatus("JOINED");
             participantRepo.save(next);
+            promotedUserId = next.getUserId();
         }
+
+        // 3. count lại
+        long newCount = participantRepo.countByEventIdAndStatus(id, "JOINED");
+
+        Event event = eventRepository.findById(id).orElse(null);
+
+        // 4. broadcast
+        Map<String, Object> msg = new HashMap<>();
+        msg.put("type", "LEAVE");
+        msg.put("eventId", id);
+        msg.put("userId", userId);
+        msg.put("status", "LEAVE");
+        msg.put("currentPlayers", newCount);
+        msg.put("maxPlayers", event != null ? event.getMaxPlayers() : null);
+
+        if (promotedUserId != null) {
+            msg.put("promotedUserId", promotedUserId);
+        }
+
+        messagingTemplate.convertAndSend("/topic/events", msg);
 
         return "left";
     }
@@ -521,7 +519,14 @@ public class EventController {
         }
 
         ep.setStatus(status);
-        participantRepo.save(ep);
+
+        try {
+            participantRepo.save(ep);
+        } catch (Exception e) {
+            return Map.of(
+                    "status", "ALREADY",
+                    "message", "You already joined this event");
+        }
 
         // =====================
         // CREATE NOTIFICATION
