@@ -14,6 +14,7 @@ import com.badminton.platform.entity.EventParticipant;
 
 import com.badminton.platform.repository.EventRepository;
 import com.badminton.platform.service.EventService;
+import com.badminton.platform.service.JoinEventAsyncService;
 import com.badminton.platform.service.JwtService;
 import com.badminton.platform.dto.EventRequestDTO;
 import com.badminton.platform.dto.EventResponseDTO;
@@ -28,12 +29,15 @@ import com.badminton.platform.entity.User;
 //import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -62,6 +66,9 @@ import java.nio.charset.StandardCharsets;
 // @CrossOrigin(origins = "http://localhost:3000") // Cho phép Frontend (React)
 // gọi API
 public class EventController {
+
+    @Autowired
+    private JoinEventAsyncService joinEventAsyncService;
 
     @Autowired
     private UserRepository userRepository;
@@ -474,6 +481,7 @@ public class EventController {
         return "left";
     }
 
+    @Transactional
     @PostMapping("/{id}/join")
     public Map<String, Object> joinEvent(
             @PathVariable Long id,
@@ -487,7 +495,6 @@ public class EventController {
                     "message", "Unauthorized");
         }
 
-        // 1. check event tồn tại
         Event event = eventRepository.findById(id).orElse(null);
         if (event == null) {
             return Map.of(
@@ -495,95 +502,39 @@ public class EventController {
                     "message", "Event not found");
         }
 
-        // 2. check đã join chưa
-        if (participantRepo.existsByEventIdAndUserId(id, userId)) {
-            return Map.of(
-                    "status", "ALREADY",
-                    "message", "You already joined this event");
-        }
-
-        // 3. đếm số người joined
         long joinedCount = participantRepo.countByEventIdAndStatus(id, "JOINED");
 
-        // 4. tạo participant
         EventParticipant ep = new EventParticipant();
         ep.setEventId(id);
         ep.setUserId(userId);
 
-        String status;
-
-        if (joinedCount >= event.getMaxPlayers()) {
-            status = "WAITING";
-        } else {
-            status = "JOINED";
-        }
+        String status = joinedCount >= event.getMaxPlayers()
+                ? "WAITING"
+                : "JOINED";
 
         ep.setStatus(status);
 
         try {
             participantRepo.save(ep);
-        } catch (Exception e) {
+        } catch (DataIntegrityViolationException e) {
             return Map.of(
                     "status", "ALREADY",
                     "message", "You already joined this event");
         }
 
-        // =====================
-        // CREATE NOTIFICATION
-        // =====================
-        Notification n = notificationService.createNotification(
-                event.getHostId(), // receiver
-                userId, // actor
-                id,
-                "EVENT_JOIN");
-
-        // =====================
-        // SOCKET SEND NOTIFICATION
-        // =====================
-        NotificationResponseDTO dto = notificationService.mapToDTO(n);
-
-        Map<String, Object> notiPayload = Map.of(
-                "type", "NOTIFICATION",
-                "userId", event.getHostId(),
-                "notification", dto);
-
-        EventWebSocketHandler.sendToUser(event.getHostId(), notiPayload);
-
-        // // 5. notify host (notification)
-        // Notification n = new Notification();
-        // n.setUserId(event.getHostId());
-        // n.setActorId(userId);
-        // n.setEventId(id);
-        // n.setType("JOIN");
-        // n.setMessage(
-        // notificationService.buildMessage("JOIN", userId, null));
-        // notificationRepo.save(n);
-
-        // 5. notify host (websocket)
-        // websocket payload
-        long newCount = participantRepo.countByEventIdAndStatus(id, "JOINED");
-        Map<String, Object> msg = new HashMap<>();
-        msg.put("type", "JOIN");
-        msg.put("eventId", id);
-        msg.put("userId", userId);
-        msg.put("status", status);
-        msg.put("currentPlayers", newCount);
-        msg.put("maxPlayers", event.getMaxPlayers());
-
-        // EventWebSocketHandler.broadcast(msg);
-        messagingTemplate.convertAndSend("/topic/events", msg);
-
-        // 6. response chuẩn
-        return Map.of(
-                "status", status, // JOINED | WAITING
+        Map<String, Object> response = Map.of(
+                "status", status,
                 "eventId", id,
                 "userId", userId,
-                "currentPlayers", newCount,
-                "maxPlayers", event.getMaxPlayers(),
                 "message",
                 status.equals("JOINED")
                         ? "Joined successfully"
                         : "Added to waiting list");
+
+        //  async (không block)
+        joinEventAsyncService.handleAfterJoin(event, userId, id, status);
+
+        return response;
     }
 
     @GetMapping("/{id}/joined")
