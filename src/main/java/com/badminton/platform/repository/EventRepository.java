@@ -1,5 +1,6 @@
 package com.badminton.platform.repository;
 
+import com.badminton.platform.dto.EventTodayDTO;
 import com.badminton.platform.entity.Event;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -156,4 +157,44 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                         """)
         List<Event> findByHostIdWithSport(@Param("hostId") Long hostId);
 
+        @Query("""
+                        SELECT e FROM Event e
+                        LEFT JOIN FETCH e.sport s
+                        WHERE e.locationLat BETWEEN :swLat AND :neLat
+                          AND e.locationLng BETWEEN :swLng AND :neLng
+                        """)
+        List<Event> findInBounds(
+                        Double neLat,
+                        Double neLng,
+                        Double swLat,
+                        Double swLng);
+
+        @Query("""
+                            SELECT new com.badminton.platform.dto.EventTodayDTO(
+                                e.id,
+                                e.hostId,
+                                false,
+                                e.title,
+                                e.googleMapLink,
+                                e.locationName,
+                                e.locationLat,
+                                e.locationLng,
+                                COUNT(p),
+                                e.startTime,
+                                e.endTime,
+                                e.status,
+                                e.maxPlayers,
+                                e.prefectureCode,
+                                e.cityCode
+                            )
+                            FROM Event e
+                            LEFT JOIN com.badminton.platform.entity.EventParticipant p
+                                ON p.event.id = e.id AND p.status = 'JOINED'
+                            WHERE e.startTime BETWEEN :start AND :end
+                            GROUP BY e
+                            ORDER BY e.startTime ASC
+                        """)
+        List<EventTodayDTO> findTodayEventsDTO(
+                        @Param("start") LocalDateTime start,
+                        @Param("end") LocalDateTime end);
 }

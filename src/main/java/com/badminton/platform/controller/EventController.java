@@ -18,6 +18,8 @@ import com.badminton.platform.service.JoinEventAsyncService;
 import com.badminton.platform.service.JwtService;
 import com.badminton.platform.dto.EventRequestDTO;
 import com.badminton.platform.dto.EventResponseDTO;
+import com.badminton.platform.dto.EventTodayDTO;
+import com.badminton.platform.dto.MapEventDto;
 import com.badminton.platform.repository.LocationRepository;
 import com.badminton.platform.repository.EventParticipantRepository;
 import com.badminton.platform.service.NotificationService;
@@ -426,24 +428,29 @@ public class EventController {
         return res;
     }
 
+    @Transactional
     @DeleteMapping("/{id}/leave")
-    public String leaveEvent(
+    public Map<String, Object> leaveEvent(
             @PathVariable Long id,
             @RequestHeader("Authorization") String authHeader) {
 
         Long userId = getUserIdFromHeader(authHeader);
 
         if (userId == null) {
-            return "unauthorized";
+            return Map.of(
+                    "status", "ERROR",
+                    "message", "Unauthorized");
         }
 
         EventParticipant ep = participantRepo.findByEventIdAndUserId(id, userId);
 
         if (ep == null) {
-            return "not_found";
+            return Map.of(
+                    "status", "NOT_FOUND",
+                    "message", "You are not in this event");
         }
 
-        // 1. delete
+        // 1. delete (atomic trong transaction)
         participantRepo.delete(ep);
 
         // 2. promote waiting
@@ -458,27 +465,17 @@ public class EventController {
             promotedUserId = next.getUserId();
         }
 
-        // 3. count lại
-        long newCount = participantRepo.countByEventIdAndStatus(id, "JOINED");
+        // 3. trả response ngay (không block)
+        Map<String, Object> response = Map.of(
+                "status", "LEFT",
+                "eventId", id,
+                "userId", userId,
+                "promotedUserId", promotedUserId);
 
-        Event event = eventRepository.findById(id).orElse(null);
+        // 4. async (sau khi DB OK)
+        joinEventAsyncService.handleAfterLeave(id, userId, promotedUserId);
 
-        // 4. broadcast
-        Map<String, Object> msg = new HashMap<>();
-        msg.put("type", "LEAVE");
-        msg.put("eventId", id);
-        msg.put("userId", userId);
-        msg.put("status", "LEAVE");
-        msg.put("currentPlayers", newCount);
-        msg.put("maxPlayers", event != null ? event.getMaxPlayers() : null);
-
-        if (promotedUserId != null) {
-            msg.put("promotedUserId", promotedUserId);
-        }
-
-        messagingTemplate.convertAndSend("/topic/events", msg);
-
-        return "left";
+        return response;
     }
 
     @Transactional
@@ -531,7 +528,7 @@ public class EventController {
                         ? "Joined successfully"
                         : "Added to waiting list");
 
-        //  async (không block)
+        // async (không block)
         joinEventAsyncService.handleAfterJoin(event, userId, id, status);
 
         return response;
@@ -664,8 +661,12 @@ public class EventController {
             dto.setId(e.getId());
             dto.setHostId(e.getHostId());
 
-            // KEY LOGIC
-            dto.setHost(e.getHostId().equals(userId));
+            boolean isHost = e.getHostId().equals(userId);
+
+            dto.setHost(isHost);
+
+            // // KEY LOGIC
+            // dto.setHost(e.getHostId().equals(userId));
 
             // map các field cũ
             dto.setTitle(e.getTitle());
@@ -690,6 +691,26 @@ public class EventController {
             dto.setLevelFrom(e.getLevelFrom());
             dto.setLevelTo(e.getLevelTo());
             dto.setStatus(e.getStatus().name());
+
+            // ✅ NEW: currentPlayers
+            long count = participantRepo.countByEventIdAndStatus(e.getId(), "JOINED");
+            dto.setCurrentPlayers(count);
+
+            // ✅ NEW: joinStatus
+            if (isHost) {
+                dto.setJoinStatus("HOST");
+            } else {
+                EventParticipant ep = participants.stream()
+                        .filter(p -> p.getEventId().equals(e.getId()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (ep != null) {
+                    dto.setJoinStatus(ep.getStatus()); // JOINED / WAITING
+                } else {
+                    dto.setJoinStatus("NONE");
+                }
+            }
 
             return dto;
 
@@ -951,18 +972,25 @@ public class EventController {
     }
 
     @GetMapping("/today")
-    public List<Event> getTodayEvents() {
+    public List<EventTodayDTO> getTodayEvents() {
 
         ZoneId zone = ZoneId.of("Asia/Tokyo");
 
         LocalDateTime now = LocalDateTime.now(zone);
-
         LocalDate today = LocalDate.now(zone);
 
         LocalDateTime end = today.atTime(23, 59, 59);
 
-        return eventRepository
-                .findTop3ByStartTimeBetweenOrderByStartTimeAsc(now, end);
+        return eventRepository.findTodayEventsDTO(now, end);
+    }
+
+    @GetMapping("/map")
+    public List<MapEventDto> getMapEvents(
+            @RequestParam Double neLat,
+            @RequestParam Double neLng,
+            @RequestParam Double swLat,
+            @RequestParam Double swLng) {
+        return eventService.getEventsForMap(neLat, neLng, swLat, swLng);
     }
 
     private Long getUserIdFromHeader(String authHeader) {

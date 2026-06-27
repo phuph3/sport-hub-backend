@@ -36,6 +36,7 @@ public class EventResponseDTO {
 
     private String levelFrom;
     private String levelTo;
+    private String joinStatus;
 
     public Long getCurrentPlayers() {
         return currentPlayers;
@@ -59,6 +60,14 @@ public class EventResponseDTO {
 
     public void setSport(Sport sport) {
         this.sport = sport;
+    }
+
+    public String getJoinStatus() {
+        return joinStatus;
+    }
+
+    public void setJoinStatus(String joinStatus) {
+        this.joinStatus = joinStatus;
     }
 
 }

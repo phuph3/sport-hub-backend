@@ -5,14 +5,19 @@ import com.badminton.platform.dto.EventRequestDTO;
 import com.badminton.platform.entity.Event;
 import com.badminton.platform.entity.EventParticipant;
 import com.badminton.platform.entity.EventStatus;
+import com.badminton.platform.entity.FavoriteEvent;
 import com.badminton.platform.entity.Sport;
 import com.badminton.platform.repository.EventParticipantRepository;
 import com.badminton.platform.repository.EventRepository;
+import com.badminton.platform.repository.FavoriteRepository;
 import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
+import com.badminton.platform.dto.MapEventDto;
+import java.util.Objects;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class EventService {
@@ -25,6 +30,9 @@ public class EventService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private FavoriteRepository favoriteRepository;
 
     public Event updateEvent(Long id, EventRequestDTO request, Long userId) {
 
@@ -150,5 +158,56 @@ public class EventService {
         // 5. update event status (soft delete)
         event.setStatus(EventStatus.CANCELLED);
         eventRepository.save(event);
+    }
+
+    public List<MapEventDto> getEventsForMap(
+            Double neLat,
+            Double neLng,
+            Double swLat,
+            Double swLng) {
+
+        List<Event> events = eventRepository.findInBounds(
+                neLat, neLng, swLat, swLng);
+
+        return events.stream().map(ev -> {
+            try {
+
+                System.out.println("Processing event: " + ev.getId());
+
+                MapEventDto dto = new MapEventDto();
+
+                dto.setId(ev.getId());
+                dto.setTitle(ev.getTitle());
+                dto.setLocationName(ev.getLocationName());
+
+                dto.setLat(ev.getLocationLat());
+                dto.setLng(ev.getLocationLng());
+
+                dto.setCurrentPlayers(
+                        ev.getCurrentPlayers() != null ? ev.getCurrentPlayers() : 0);
+
+                dto.setMaxPlayers(ev.getMaxPlayers());
+
+                dto.setStartTime(
+                        ev.getStartTime() != null ? ev.getStartTime().toString() : null);
+
+                dto.setEndTime(
+                        ev.getEndTime() != null ? ev.getEndTime().toString() : null);
+
+                // 🔥 DỄ LỖI NHẤT
+                dto.setSportName(
+                        ev.getSport() != null ? ev.getSport().getName() : null);
+
+                return dto;
+
+            } catch (Exception e) {
+                System.out.println("ERROR EVENT ID: " + ev.getId());
+                e.printStackTrace(); // ✅ QUAN TRỌNG
+                return null;
+            }
+        })
+                .filter(Objects::nonNull)
+                .toList();
+
     }
 }
