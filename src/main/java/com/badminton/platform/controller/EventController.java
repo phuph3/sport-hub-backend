@@ -466,11 +466,13 @@ public class EventController {
         }
 
         // 3. trả response ngay (không block)
-        Map<String, Object> response = Map.of(
-                "status", "LEFT",
-                "eventId", id,
-                "userId", userId,
-                "promotedUserId", promotedUserId);
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "LEFT");
+        response.put("eventId", id);
+        response.put("userId", userId);
+        if (promotedUserId != null) {
+            response.put("promotedUserId", promotedUserId);
+        }
 
         // 4. async (sau khi DB OK)
         joinEventAsyncService.handleAfterLeave(id, userId, promotedUserId);
