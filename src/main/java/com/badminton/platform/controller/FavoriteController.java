@@ -12,8 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.badminton.platform.service.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -43,7 +45,8 @@ public class FavoriteController {
             @RequestHeader("Authorization") String authHeader) {
         Long userId = getUserIdFromHeader(authHeader);
 
-        if (userId == null) return List.of();
+        if (userId == null)
+            return List.of();
 
         List<FavoriteEvent> list = favoriteRepository.findByUserId(userId);
 
@@ -105,7 +108,7 @@ public class FavoriteController {
         Long userId = getUserIdFromHeader(authHeader);
 
         if (favoriteRepository.findByUserIdAndEventId(userId, eventId).isPresent()) {
-            return ResponseEntity.ok("Allready added");
+            return ResponseEntity.ok("Already added");
         }
 
         FavoriteEvent f = new FavoriteEvent();
@@ -114,7 +117,11 @@ public class FavoriteController {
 
         favoriteRepository.save(f);
 
-        return ResponseEntity.ok("Added");
+        Map<String, Object> res = new HashMap<>();
+        res.put("status", "ADDED");
+
+        return ResponseEntity.ok(res);
+
     }
 
     // REMOVE FAVORITE
@@ -134,7 +141,26 @@ public class FavoriteController {
             return ResponseEntity.ok("Removed");
         }
 
-        return ResponseEntity.ok("Not Found");
+        Map<String, Object> res = new HashMap<>();
+        res.put("status", "REMOVED");
+
+        return ResponseEntity.ok(res);
+
+    }
+
+    @GetMapping("/favorites/check/{eventId}")
+    public boolean isFavorite(
+            @PathVariable Long eventId,
+            @RequestHeader("Authorization") String authHeader) {
+
+        Long userId = getUserIdFromHeader(authHeader);
+
+        if (userId == null)
+            return false;
+
+        return favoriteRepository
+                .findByUserIdAndEventId(userId, eventId)
+                .isPresent();
     }
 
     private Long getUserIdFromHeader(String authHeader) {

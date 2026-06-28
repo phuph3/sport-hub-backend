@@ -166,48 +166,46 @@ public class EventService {
             Double swLat,
             Double swLng) {
 
+        LocalDateTime now = LocalDateTime.now();
+
         List<Event> events = eventRepository.findInBounds(
                 neLat, neLng, swLat, swLng);
 
-        return events.stream().map(ev -> {
-            try {
+        return events.stream()
 
-                System.out.println("Processing event: " + ev.getId());
+                //  chỉ lọc hết hạn
+                .filter(ev -> ev.getEndTime() != null && ev.getEndTime().isAfter(now))
 
-                MapEventDto dto = new MapEventDto();
+                //  bỏ canceled
+                .filter(ev -> ev.getStatus() != EventStatus.CANCELLED)
 
-                dto.setId(ev.getId());
-                dto.setTitle(ev.getTitle());
-                dto.setLocationName(ev.getLocationName());
+                .map(ev -> {
+                    MapEventDto dto = new MapEventDto();
 
-                dto.setLat(ev.getLocationLat());
-                dto.setLng(ev.getLocationLng());
+                    dto.setId(ev.getId());
+                    dto.setTitle(ev.getTitle());
+                    dto.setLocationName(ev.getLocationName());
 
-                dto.setCurrentPlayers(
-                        ev.getCurrentPlayers() != null ? ev.getCurrentPlayers() : 0);
+                    dto.setLat(ev.getLocationLat());
+                    dto.setLng(ev.getLocationLng());
 
-                dto.setMaxPlayers(ev.getMaxPlayers());
+                    dto.setCurrentPlayers(
+                            ev.getCurrentPlayers() != null ? ev.getCurrentPlayers() : 0);
 
-                dto.setStartTime(
-                        ev.getStartTime() != null ? ev.getStartTime().toString() : null);
+                    dto.setMaxPlayers(ev.getMaxPlayers());
 
-                dto.setEndTime(
-                        ev.getEndTime() != null ? ev.getEndTime().toString() : null);
+                    dto.setStartTime(
+                            ev.getStartTime() != null ? ev.getStartTime().toString() : null);
 
-                // 🔥 DỄ LỖI NHẤT
-                dto.setSportName(
-                        ev.getSport() != null ? ev.getSport().getName() : null);
+                    dto.setEndTime(
+                            ev.getEndTime() != null ? ev.getEndTime().toString() : null);
 
-                return dto;
+                    dto.setSportName(
+                            ev.getSport() != null ? ev.getSport().getName() : null);
 
-            } catch (Exception e) {
-                System.out.println("ERROR EVENT ID: " + ev.getId());
-                e.printStackTrace(); // ✅ QUAN TRỌNG
-                return null;
-            }
-        })
-                .filter(Objects::nonNull)
+                    return dto;
+                })
+
                 .toList();
-
     }
 }
