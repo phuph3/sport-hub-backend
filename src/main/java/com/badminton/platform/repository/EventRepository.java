@@ -127,7 +127,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query(value = """
             SELECT * FROM events e
             WHERE
-                e.start_time >= CURRENT_TIMESTAMP
+                e.end_time >= :now
                 AND e.end_time >= COALESCE(:start, e.end_time)
                 AND e.start_time <= COALESCE(:end, e.start_time)
 
@@ -154,7 +154,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             """, countQuery = """
             SELECT count(*) FROM events e
             WHERE
-                e.start_time >= CURRENT_TIMESTAMP
+                e.end_time >= :now
                 AND e.end_time >= COALESCE(:start, e.end_time)
                 AND e.start_time <= COALESCE(:end, e.start_time)
 
@@ -179,6 +179,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                 )
             """, nativeQuery = true)
     Page<Event> searchFull(
+            @Param("now") LocalDateTime now,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end,
             @Param("prefecture") String prefecture,

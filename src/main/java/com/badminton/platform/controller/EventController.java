@@ -821,6 +821,8 @@ public class EventController {
 
         PageRequest pageable = PageRequest.of(page, size);
 
+        LocalDateTime now = LocalDateTime.now();
+        
         LocalDateTime startTime = start != null
                 ? LocalDateTime.parse(start)
                 : null;
@@ -828,9 +830,10 @@ public class EventController {
         LocalDateTime endTime = end != null
                 ? LocalDateTime.parse(end)
                 : null;
-
+                
         // lấy page từ DB
         Page<Event> eventPage = eventRepository.searchFull(
+                now,
                 startTime,
                 endTime,
                 prefecture,
@@ -875,6 +878,8 @@ public class EventController {
 
         PageRequest pageable = PageRequest.of(page, size);
 
+        LocalDateTime now = LocalDateTime.now();
+        
         LocalDateTime startTime = start != null
                 ? LocalDateTime.parse(start)
                 : null;
@@ -884,6 +889,7 @@ public class EventController {
                 : null;
 
         return eventRepository.searchFull(
+                now,
                 startTime,
                 endTime,
                 prefecture,
