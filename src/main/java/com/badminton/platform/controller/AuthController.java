@@ -72,6 +72,7 @@ public class AuthController {
 
             String email = payload.getEmail();
             String name = (String) payload.get("name");
+            String picture = (String) payload.get("picture"); // Lấy link ảnh từ Google
 
             // tìm user theo email
             User user = userRepository.findByEmail(email)
@@ -79,8 +80,15 @@ public class AuthController {
                         User newUser = new User();
                         newUser.setEmail(email);
                         newUser.setNickname(name);
+                        newUser.setAvatarUrl(picture); // Lưu avatar khi tạo mới
                         return userRepository.save(newUser);
                     });
+
+            // Nếu user cũ đã tồn tại nhưng chưa có avatar_url thì cập nhật luôn
+            if (picture != null && (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty())) {
+                user.setAvatarUrl(picture);
+                userRepository.save(user);
+            }
 
             // tạo JWT
             String jwt = jwtService.generateToken(user.getId());
