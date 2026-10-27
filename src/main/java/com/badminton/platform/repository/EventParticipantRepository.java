@@ -36,6 +36,7 @@ public interface EventParticipantRepository extends JpaRepository<EventParticipa
               JOIN ep.user u
               WHERE ep.event.id = :eventId
                 AND ep.status = :status
+              ORDER BY ep.createdAt ASC
             """)
     List<ParticipantDTO> findParticipantsByEventAndStatus(
             Long eventId,
